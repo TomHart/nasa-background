@@ -219,8 +219,8 @@ func main() {
 
 	options := []func() (string, error){
 		getMarsImageURL,
-		getRandomEarthImageURL,
-		getEpicImageURL,
+		//getRandomEarthImageURL,
+		//getEpicImageURL,
 	}
 
 	chosen := options[rand.Intn(len(options))]
