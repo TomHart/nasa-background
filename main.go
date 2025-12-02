@@ -95,7 +95,7 @@ func getMarsImageURL() (string, error) {
 			return "", fmt.Errorf("no Mars images found")
 		}
 		return marsData.Photos[rand.Intn(len(marsData.Photos))].ImgSrc, nil
-	}, 30, marsData)
+	}, 90, marsData)
 }
 
 func getRandomEarthImageURL() (string, error) {
@@ -151,6 +151,31 @@ func getEpicImageURL() (string, error) {
 	imageURL := fmt.Sprintf("https://epic.gsfc.nasa.gov/archive/natural/%s/png/%s.png", datePath, img.Image)
 
 	return imageURL, nil
+}
+
+// === APOD
+
+type ApodImage struct {
+	Image     string `json:"hdurl"`
+	Date      string `json:"date"`
+	MediaType string `json:"media_type"`
+}
+
+func getApodImageURL() (string, error) {
+
+	url := fmt.Sprintf("https://api.nasa.gov/planetary/apod?api_key=%s", apiKey)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var data ApodImage
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", err
+	}
+
+	return data.Image, nil
 }
 
 // ==== Shared Utils ====
@@ -218,9 +243,10 @@ func main() {
 	// rand.Seed(time.Now().UnixNano())
 
 	options := []func() (string, error){
-		getMarsImageURL,
+		//getMarsImageURL,
 		//getRandomEarthImageURL,
 		//getEpicImageURL,
+		getApodImageURL,
 	}
 
 	chosen := options[rand.Intn(len(options))]
