@@ -14,7 +14,8 @@ import (
 	"time"
 )
 
-const apiKey = "" // Replace with your real API key
+const keychainService = "NasaBG_APIKey"
+const keychainAccount = "nasa_api_key"
 
 // ==== Mars Rover ====
 
@@ -86,7 +87,7 @@ func getImageURLWithRollingDate(baseURL string, processResponse func(interface{}
 	return "", fmt.Errorf("no images found")
 }
 
-func getMarsImageURL() (string, error) {
+func getMarsImageURL(apiKey string) (string, error) {
 	baseURL := "https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos?earth_date=%s&api_key=" + apiKey
 	marsData := &MarsResponse{}
 	return getImageURLWithRollingDate(baseURL, func(data interface{}) (string, error) {
@@ -98,7 +99,7 @@ func getMarsImageURL() (string, error) {
 	}, 90, marsData)
 }
 
-func getRandomEarthImageURL() (string, error) {
+func getRandomEarthImageURL(apiKey string) (string, error) {
 	baseURLTemplate := "https://api.nasa.gov/planetary/earth/imagery?lon=%f&lat=%f&date=%%s&dim=0.2&api_key=%s"
 
 	for i := 0; i < 5; i++ {
@@ -128,7 +129,7 @@ type EpicImage struct {
 	Date  string `json:"date"`
 }
 
-func getEpicImageURL() (string, error) {
+func getEpicImageURL(apiKey string) (string, error) {
 	url := fmt.Sprintf("https://api.nasa.gov/EPIC/api/natural?api_key=%s", apiKey)
 	resp, err := http.Get(url)
 	if err != nil {
@@ -161,7 +162,7 @@ type ApodImage struct {
 	MediaType string `json:"media_type"`
 }
 
-func getApodImageURL() (string, error) {
+func getApodImageURL(apiKey string) (string, error) {
 
 	url := fmt.Sprintf("https://api.nasa.gov/planetary/apod?api_key=%s", apiKey)
 	resp, err := http.Get(url)
@@ -237,20 +238,77 @@ end tell`, imagePath)
 	}
 }
 
+func getAPIKeyFromKeychain() (string, error) {
+	cmd := exec.Command("security", "find-generic-password", "-s", keychainService, "-a", keychainAccount, "-w")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func storeAPIKeyInKeychain(apiKey string) error {
+	cmd := exec.Command("security", "add-generic-password", "-U", "-s", keychainService, "-a", keychainAccount, "-w", apiKey)
+	return cmd.Run()
+}
+
+func promptForAPIKey() (string, error) {
+	fmt.Print("Enter your NASA API key: ")
+	var apiKey string
+	_, err := fmt.Scanln(&apiKey)
+	return strings.TrimSpace(apiKey), err
+}
+
+func getAPIKey(reset bool) (string, error) {
+	if reset {
+		apiKey, err := promptForAPIKey()
+		if err != nil {
+			return "", err
+		}
+		if err := storeAPIKeyInKeychain(apiKey); err != nil {
+			return "", err
+		}
+		return apiKey, nil
+	}
+	apiKey, err := getAPIKeyFromKeychain()
+	if err == nil && apiKey != "" {
+		return apiKey, nil
+	}
+	apiKey, err = promptForAPIKey()
+	if err != nil {
+		return "", err
+	}
+	if err := storeAPIKeyInKeychain(apiKey); err != nil {
+		return "", err
+	}
+	return apiKey, nil
+}
+
 // ==== MAIN ====
 
 func main() {
-	// rand.Seed(time.Now().UnixNano())
+	reset := false
+	for _, arg := range os.Args[1:] {
+		if arg == "--reset" {
+			reset = true
+		}
+	}
 
-	options := []func() (string, error){
+	apiKey, err := getAPIKey(reset)
+	if err != nil {
+		fmt.Println("Error retrieving API key:", err)
+		return
+	}
+
+	options := []func(string) (string, error){
+		getApodImageURL,
 		//getMarsImageURL,
 		//getRandomEarthImageURL,
 		//getEpicImageURL,
-		getApodImageURL,
 	}
 
 	chosen := options[rand.Intn(len(options))]
-	imageURL, err := chosen()
+	imageURL, err := chosen(apiKey)
 	if err != nil {
 		fmt.Println("Error getting image:", err)
 		return
