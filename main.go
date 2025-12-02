@@ -31,7 +31,12 @@ func getApodImageURL(apiKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		cerr := resp.Body.Close()
+		if cerr != nil {
+			log.Printf("error closing response body: %v", cerr)
+		}
+	}()
 
 	var data ApodImage
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
@@ -41,6 +46,58 @@ func getApodImageURL(apiKey string) (string, error) {
 	return data.Image, nil
 }
 
+// === NASA Images API ===
+type NasaImagesResponse struct {
+	Collection struct {
+		Items []struct {
+			Links []struct {
+				Href   string `json:"href"`
+				Rel    string `json:"rel"`
+				Render string `json:"render"`
+				Width  int    `json:"width,omitempty"`
+				Height int    `json:"height,omitempty"`
+				Size   int    `json:"size,omitempty"`
+			} `json:"links"`
+		} `json:"items"`
+	} `json:"collection"`
+}
+
+func getRandomNasaImageURL(_ string) (string, error) {
+	url := "https://images-api.nasa.gov/search?q=shuttle&media_type=image&keywords=launch"
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		cerr := resp.Body.Close()
+		if cerr != nil {
+			log.Printf("error closing response body: %v", cerr)
+		}
+	}()
+
+	var data NasaImagesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", err
+	}
+	items := data.Collection.Items
+	if len(items) == 0 {
+		return "", fmt.Errorf("no images found")
+	}
+	chosen := items[rand.Intn(len(items))]
+	var largest string
+	maxSize := -1
+	for _, link := range chosen.Links {
+		if strings.HasSuffix(link.Href, ".jpg") && link.Size > maxSize {
+			largest = link.Href
+			maxSize = link.Size
+		}
+	}
+	if largest == "" {
+		return "", fmt.Errorf("no JPG image found")
+	}
+	return largest, nil
+}
+
 // ==== Shared Utils ====
 
 func downloadImage(url, filepath string) error {
@@ -48,13 +105,23 @@ func downloadImage(url, filepath string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		cerr := resp.Body.Close()
+		if cerr != nil {
+			log.Printf("error closing response body: %v", cerr)
+		}
+	}()
 
 	out, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		cerr := out.Close()
+		if cerr != nil {
+			log.Printf("error closing file: %v", cerr)
+		}
+	}()
 
 	_, err = io.Copy(out, resp.Body)
 	return err
@@ -164,6 +231,7 @@ func main() {
 
 	options := []func(string) (string, error){
 		getApodImageURL,
+		getRandomNasaImageURL,
 		//getMarsImageURL,
 		//getRandomEarthImageURL,
 		//getEpicImageURL,
@@ -180,7 +248,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer tmpFile.Close()
+	defer func() {
+		cerr := tmpFile.Close()
+		if cerr != nil {
+			log.Printf("error closing temp file: %v", cerr)
+		}
+	}()
 
 	imagePath := tmpFile.Name()
 	fmt.Println("Downloading from:", imageURL)
