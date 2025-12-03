@@ -189,6 +189,10 @@ func promptForAPIKey() (string, error) {
 }
 
 func getAPIKey(reset bool) (string, error) {
+	// First, check environment variable
+	if envKey := os.Getenv("NASA_API_KEY"); envKey != "" {
+		return envKey, nil
+	}
 	if reset {
 		apiKey, err := promptForAPIKey()
 		if err != nil {
