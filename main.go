@@ -15,6 +15,7 @@ import (
 
 const keychainService = "NasaBG_APIKey"
 const keychainAccount = "nasa_api_key"
+const lastWallpaperPathFile = "~/.nasa_wallpaper_last"
 
 // === APOD
 
@@ -217,6 +218,39 @@ func getAPIKey(reset bool) (string, error) {
 	return apiKey, nil
 }
 
+func expandHome(path string) string {
+	if strings.HasPrefix(path, "~") {
+		home, err := os.UserHomeDir()
+		if err == nil {
+			return strings.Replace(path, "~", home, 1)
+		}
+	}
+	return path
+}
+
+func getLastWallpaperPath() (string, error) {
+	path := expandHome(lastWallpaperPathFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func setLastWallpaperPath(wallpaperPath string) error {
+	path := expandHome(lastWallpaperPathFile)
+	return os.WriteFile(path, []byte(wallpaperPath), 0644)
+}
+
+func removeOldWallpaper() {
+	oldPath, err := getLastWallpaperPath()
+	if err == nil && oldPath != "" {
+		if _, err := os.Stat(oldPath); err == nil {
+			_ = os.Remove(oldPath)
+		}
+	}
+}
+
 // ==== MAIN ====
 
 func main() {
@@ -248,6 +282,8 @@ func main() {
 		return
 	}
 
+	removeOldWallpaper()
+
 	tmpFile, err := os.CreateTemp("", "nasa_wallpaper_*.jpg")
 	if err != nil {
 		log.Fatal(err)
@@ -270,5 +306,6 @@ func main() {
 		fmt.Println("Failed to set wallpaper:", err)
 	} else {
 		fmt.Println("Wallpaper set successfully!")
+		_ = setLastWallpaperPath(imagePath)
 	}
 }
