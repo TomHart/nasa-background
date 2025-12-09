@@ -69,6 +69,14 @@ func getRandomNasaImageURL(_ string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode == 403 {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Printf("error closing response body: %v", err)
+		}
+		// If 403, try again recursively (restart logic)
+		return getRandomNasaImageURL("")
+	}
 	defer func() {
 		cerr := resp.Body.Close()
 		if cerr != nil {
