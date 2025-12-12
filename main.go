@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -11,101 +10,14 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+
+	"NasaBG/apod"
+	"NasaBG/imagesapi"
 )
 
 const keychainService = "NasaBG_APIKey"
 const keychainAccount = "nasa_api_key"
 const lastWallpaperPathFile = "~/.nasa_wallpaper_last"
-
-// === APOD
-
-type ApodImage struct {
-	Image     string `json:"hdurl"`
-	Date      string `json:"date"`
-	MediaType string `json:"media_type"`
-}
-
-func getApodImageURL(apiKey string) (string, error) {
-
-	url := fmt.Sprintf("https://api.nasa.gov/planetary/apod?api_key=%s", apiKey)
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		cerr := resp.Body.Close()
-		if cerr != nil {
-			log.Printf("error closing response body: %v", cerr)
-		}
-	}()
-
-	var data ApodImage
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", err
-	}
-
-	return data.Image, nil
-}
-
-// === NASA Images API ===
-type NasaImagesResponse struct {
-	Collection struct {
-		Items []struct {
-			Links []struct {
-				Href   string `json:"href"`
-				Rel    string `json:"rel"`
-				Render string `json:"render"`
-				Width  int    `json:"width,omitempty"`
-				Height int    `json:"height,omitempty"`
-				Size   int    `json:"size,omitempty"`
-			} `json:"links"`
-		} `json:"items"`
-	} `json:"collection"`
-}
-
-func getRandomNasaImageURL(_ string) (string, error) {
-	url := "https://images-api.nasa.gov/search?q=shuttle&media_type=image&keywords=launch"
-	resp, err := http.Get(url)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode == 403 {
-		err := resp.Body.Close()
-		if err != nil {
-			log.Printf("error closing response body: %v", err)
-		}
-		// If 403, try again recursively (restart logic)
-		return getRandomNasaImageURL("")
-	}
-	defer func() {
-		cerr := resp.Body.Close()
-		if cerr != nil {
-			log.Printf("error closing response body: %v", cerr)
-		}
-	}()
-
-	var data NasaImagesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", err
-	}
-	items := data.Collection.Items
-	if len(items) == 0 {
-		return "", fmt.Errorf("no images found")
-	}
-	chosen := items[rand.Intn(len(items))]
-	var largest string
-	maxSize := -1
-	for _, link := range chosen.Links {
-		if strings.HasSuffix(link.Href, ".jpg") && link.Size > maxSize {
-			largest = link.Href
-			maxSize = link.Size
-		}
-	}
-	if largest == "" {
-		return "", fmt.Errorf("no JPG image found")
-	}
-	return largest, nil
-}
 
 // ==== Shared Utils ====
 
@@ -276,8 +188,8 @@ func main() {
 	}
 
 	options := []func(string) (string, error){
-		getApodImageURL,
-		getRandomNasaImageURL,
+		apod.GetApodImageURL,
+		imagesapi.GetRandomNasaImageURL,
 		//getMarsImageURL,
 		//getRandomEarthImageURL,
 		//getEpicImageURL,
