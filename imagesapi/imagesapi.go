@@ -29,7 +29,7 @@ type NasaImagesResponse struct {
 
 // GetRandomNasaImageURL fetches a random NASA image URL from the Images API.
 func GetRandomNasaImageURL(_ string) (string, error) {
-	url := "https://images-api.nasa.gov/search?media_type=image&keywords=artemis 2,SLS,Orion"
+	url := "https://images-api.nasa.gov/search?media_type=image&keywords=artemis 2,SLS,Orion&center=AFRC"
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
