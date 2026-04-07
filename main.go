@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"strings"
 
-	"NasaBG/apod"
 	"NasaBG/imagesapi"
 )
 
@@ -181,6 +180,7 @@ func main() {
 		}
 	}
 
+	fmt.Println("Retrieving NASA API key...")
 	apiKey, err := getAPIKey(reset)
 	if err != nil {
 		fmt.Println("Error retrieving API key:", err)
@@ -188,14 +188,17 @@ func main() {
 	}
 
 	options := []func(string) (string, error){
-		apod.GetApodImageURL,
+		//apod.GetApodImageURL,
 		imagesapi.GetRandomNasaImageURL,
 		//getMarsImageURL,
 		//getRandomEarthImageURL,
 		//getEpicImageURL,
 	}
 
-	chosen := options[rand.Intn(len(options))]
+	intn := rand.Intn(len(options))
+	chosen := options[intn]
+	sources := []string{"imagesApi"}
+	fmt.Println("Using image source:", sources[intn])
 	imageURL, err := chosen(apiKey)
 	if err != nil {
 		fmt.Println("Error getting image:", err)

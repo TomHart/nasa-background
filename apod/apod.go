@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 type ApodImage struct {
@@ -14,8 +15,11 @@ type ApodImage struct {
 
 // GetApodImageURL fetches the APOD image URL using the provided API key.
 func GetApodImageURL(apiKey string) (string, error) {
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
 	url := fmt.Sprintf("https://api.nasa.gov/planetary/apod?api_key=%s", apiKey)
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return "", err
 	}

@@ -20,13 +20,16 @@ type NasaImagesResponse struct {
 				Height int    `json:"height,omitempty"`
 				Size   int    `json:"size,omitempty"`
 			} `json:"links"`
+			Data []struct {
+				Keywords []string `json:"keywords"`
+			} `json:"data"`
 		} `json:"items"`
 	} `json:"collection"`
 }
 
 // GetRandomNasaImageURL fetches a random NASA image URL from the Images API.
 func GetRandomNasaImageURL(_ string) (string, error) {
-	url := "https://images-api.nasa.gov/search?media_type=image&keywords=hst,hubble"
+	url := "https://images-api.nasa.gov/search?media_type=image&keywords=artemis 2,SLS,Orion"
 	resp, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -60,5 +63,7 @@ func GetRandomNasaImageURL(_ string) (string, error) {
 	if largest == "" {
 		return "", fmt.Errorf("no JPG image found")
 	}
+
+	fmt.Printf("Keywords: '%s'\n", strings.Join(chosen.Data[0].Keywords, "', '"))
 	return largest, nil
 }
