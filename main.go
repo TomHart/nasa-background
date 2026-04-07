@@ -1,6 +1,7 @@
 package main
 
 import (
+	"NasaBG/imagesapi"
 	"fmt"
 	"io"
 	"log"
@@ -10,8 +11,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-
-	"NasaBG/imagesapi"
 )
 
 const keychainService = "NasaBG_APIKey"
@@ -190,15 +189,10 @@ func main() {
 	options := []func(string) (string, error){
 		//apod.GetApodImageURL,
 		imagesapi.GetRandomNasaImageURL,
-		//getMarsImageURL,
-		//getRandomEarthImageURL,
-		//getEpicImageURL,
 	}
 
-	intn := rand.Intn(len(options))
-	chosen := options[intn]
-	sources := []string{"imagesApi"}
-	fmt.Println("Using image source:", sources[intn])
+	randomInt := rand.Intn(len(options))
+	chosen := options[randomInt]
 	imageURL, err := chosen(apiKey)
 	if err != nil {
 		fmt.Println("Error getting image:", err)
